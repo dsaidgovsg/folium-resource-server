@@ -1,0 +1,7 @@
+version: '2.3'
+services:
+  folium-resource:
+    build:
+      context: .
+    ports:
+      - 8080:8080
