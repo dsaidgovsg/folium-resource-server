@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches:
+    - master
+    - v*
+  pull_request:
+    branches:
+    - master
+    - v*
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: folium-resource-server
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Set Docker image tag based on ref
+      run: |-
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          REF_TAG="${{ github.head_ref }}"
+        else
+          REF_TAG_RAW="${{ github.ref }}"
+          REF_TAG="${REF_TAG_RAW##*/}"
+        fi
+        if [[ "${{ github.event_name }}" == "push" ]]; then
+          IMAGE_TAG="${REF_TAG}"
+        else
+          IMAGE_TAG="test-${REF_TAG}"
+        fi
+        echo "::set-env name=IMAGE_TAG::${IMAGE_TAG}"
+    - name: Build and push Docker release image
+      uses: docker/build-push-action@v1
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+        repository: dsaidgovsg/${{ env.IMAGE_NAME }}
+        tags: ${{ env.IMAGE_TAG }}
