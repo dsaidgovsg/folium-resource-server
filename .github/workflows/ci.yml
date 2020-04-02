@@ -24,10 +24,10 @@ jobs:
     - name: Set Docker image tag based on ref
       run: |-
         if [[ "${{ github.event_name }}" == "pull_request" ]]; then REF_TAG="${{ github.head_ref }}"
-        else REF_TAG_RAW="${{ github.ref }}" && REF_TAG="${REF_TAG_RAW##*/}" fi
+        else REF_TAG_RAW="${{ github.ref }}" REF_TAG="${REF_TAG_RAW##*/}"; fi
 
         if [[ "${{ github.event_name }}" == "push" ]]; then IMAGE_TAG="${REF_TAG}"
-        else IMAGE_TAG="test-${REF_TAG}" fi
+        else IMAGE_TAG="test-${REF_TAG}"; fi
 
         echo "::set-env name=IMAGE_TAG::${IMAGE_TAG}"
     - name: Build and push Docker release image
