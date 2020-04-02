@@ -98,7 +98,7 @@ function download_urls {
   # The directory hierarchy to place the resource to download follows the URL
   local -r base_dir="$1"
   local -r urls="$2"
-  local -r find_css_urls="$3"  # For CSS files only
+  local -r is_css="$3"  # For CSS files only
 
   local full_fp
   local rel_urls
@@ -106,12 +106,11 @@ function download_urls {
 
   for url in ${urls}; do
     download_url_impl "${base_dir}" "${url}"
+    full_fp="$(get_full_filepath_from_url "${base_dir}" "${url}")"
     
     # Additional step for CSS files only
     # Need to find the inner external resources the CSS uses and save relative to its path
-    if [[ "${find_css_urls}" == "yes" ]]; then
-      full_fp="$(get_full_filepath_from_url "${base_dir}" "${url}")"
-
+    if [[ "${is_css}" == "yes" ]]; then
       # rg returns 1 when it fails to find a match, which is okay here if the CSS doesn't have
       # additional resources
       # Drops cases that start with #
@@ -119,6 +118,16 @@ function download_urls {
 
       for rel_url in ${rel_urls}; do
         inner_url="$(resolve_url "${url}" "${rel_url}")"
+        download_url_impl "${base_dir}" "${inner_url}"
+      done
+    else
+      # leaflet js annoyingly contains some JS references that needs to be downloaded too
+      rel_urls="$(rg "Url:['\"](.+?\.(?:png|svg))['\"]" -o -r "\$1" --no-column --no-filename -N -U -- "${full_fp}" || true)"
+
+      for rel_url in ${rel_urls}; do
+        # Since this targets leaflet more or less, and needs to assume images/, we will assume this
+        # is true for all cases for now
+        inner_url="$(resolve_url "${url}" "images/${rel_url}")"
         download_url_impl "${base_dir}" "${inner_url}"
       done
     fi
