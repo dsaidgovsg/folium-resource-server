@@ -1,0 +1,20 @@
+{
+  "leaflet.timedimension.control.min.css": "rawcdn.githack.com/socib/Leaflet.TimeDimension/master/dist/leaflet.timedimension.control.min.css",
+  "default.min.css": "cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/styles/default.min.css",
+  "leaflet.draw.css": "cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.2/leaflet.draw.css",
+  "Control.FullScreen.min.css": "cdnjs.cloudflare.com/ajax/libs/leaflet.fullscreen/1.4.2/Control.FullScreen.min.css",
+  "L.Control.Locate.min.css": "cdnjs.cloudflare.com/ajax/libs/leaflet-locatecontrol/0.66.2/L.Control.Locate.min.css",
+  "MarkerCluster.css": "cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.1.0/MarkerCluster.css",
+  "MarkerCluster.Default.css": "cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.1.0/MarkerCluster.Default.css",
+  "Control.MiniMap.css": "cdnjs.cloudflare.com/ajax/libs/leaflet-minimap/3.6.1/Control.MiniMap.css",
+  "leaflet-search.min.css": "cdn.jsdelivr.net/npm/leaflet-search@2.9.7/dist/leaflet-search.min.css",
+  "L.Control.MousePosition.css": "rawcdn.githack.com/ardhi/Leaflet.MousePosition/c32f1c84/src/L.Control.MousePosition.css",
+  "leaflet-measure.css": "rawcdn.githack.com/ljagis/leaflet-measure/2.1.7/dist/leaflet-measure.css",
+  "leaflet-beautify-marker-icon.css": "rawcdn.githack.com/marslan390/BeautifyMarker/master/leaflet-beautify-marker-icon.css",
+  "leaflet.awesome-markers.css": "cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css",
+  "leaflet.css": "cdn.jsdelivr.net/npm/leaflet@1.5.1/dist/leaflet.css",
+  "bootstrap.min.css": "maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css",
+  "bootstrap-theme.min.css": "maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css",
+  "font-awesome.min.css": "maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css",
+  "leaflet.awesome.rotate.css": "rawcdn.githack.com/python-visualization/folium/master/folium/templates/leaflet.awesome.rotate.css"
+}

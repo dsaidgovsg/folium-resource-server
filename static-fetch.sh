@@ -1,128 +1,217 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 #
 # Constants
 #
 
 FOLIUM_REV="v0.10.1"
-BASE_DIR="static"
+BASE_DIR="static"  # To keep all the downloaded resources for hosting
+EXT_DIR="external"  # To keep the resource mapping config for external usage
+EXT_JS_CONF_FILENAME="folium-js.json"
+EXT_CSS_CONF_FILENAME="folium-css.json"
 
 #
-# Functions
+# Resource fetching functions
 #
 
 function strip_protocol {
-    local -r url="$1"
-    local mod_url
+  local -r url="$1"
+  local mod_url
 
-    mod_url="${url/https:\/\//}"
-    mod_url="${mod_url/http:\/\//}"
+  mod_url="${url/https:\/\//}"
+  mod_url="${mod_url/http:\/\//}"
 
-    echo "${mod_url}"
+  echo "${mod_url}"
 }
 
 function resolve_url {
-    local -r base_url="$1"
-    local -r relative_url="$2"
+  local -r base_url="$1"
+  local -r relative_url="$2"
 
-    local base_dp; base_dp="$(dirname "${base_url}")"
-    local mod_relative_url; mod_relative_url="${relative_url}"
+  local base_dp; base_dp="$(dirname "${base_url}")"
+  local mod_relative_url; mod_relative_url="${relative_url}"
 
-    # For simplicity, we assume the ../ only exists on the left until a non-../ is found
-    if [[ "${mod_relative_url}" == "../"* ]]; then
-        base_dp="$(dirname "${base_dp}")"
-        mod_relative_url="${mod_relative_url:3}"  # Substring to strip off the ../
-    fi
+  # For simplicity, we assume the ../ only exists on the left until a non-../ is found
+  if [[ "${mod_relative_url}" == "../"* ]]; then
+    base_dp="$(dirname "${base_dp}")"
+    mod_relative_url="${mod_relative_url:3}"  # Substring to strip off the ../
+  fi
 
-    echo "${base_dp}/${mod_relative_url}"
+  echo "${base_dp}/${mod_relative_url}"
 }
 
 function get_full_dirpath_from_url {
-    local -r url="$1"
+  local -r base_dir="$1"
+  local -r url="$2"
 
-    local -r dp="$(dirname "$(strip_protocol "${url}")")"
-    local -r full_dp="${base_dir}/${dp}"
+  local -r dp="$(dirname "$(strip_protocol "${url}")")"
 
-    echo "${full_dp}"
+  if [[ "${base_dir}" == "" ]]; then
+    # Special case not to append base if empty
+    echo "${dp}"
+  else
+    echo "${base_dir}/${dp}"
+  fi
 }
 
 function get_full_filepath_from_url {
-    local -r url="$1"
+  local -r base_dir="$1"
+  local -r url="$2"
 
-    local -r full_dp="$(get_full_dirpath_from_url "${url}")"
-    local -r bn="$(basename "${url}")"
-    local -r full_fp="${full_dp}/${bn}"
+  local -r full_dp="$(get_full_dirpath_from_url "${base_dir}" "${url}")"
+  local -r bn="$(basename "${url}")"
+  local -r full_fp="${full_dp}/${bn}"
 
-    echo "${full_fp}"
+  echo "${full_fp}"
 }
 
 function download_url_impl {
-    local -r base_dir=$1
-    local -r url=$2
+  local -r base_dir=$1
+  local -r url=$2
 
-    local -r full_fp="$(get_full_filepath_from_url "${url}")"
+  local -r full_fp="$(get_full_filepath_from_url "${base_dir}" "${url}")"
 
-    # Only download file if remote file is newer
-    local zflag
-    if [[ -e "${full_fp}" ]]; then
-        zflag=(-z "${full_fp}")
-    else
-        zflag=()
-    fi
+  # Only download file if remote file is newer
+  local zflag
+  if [[ -e "${full_fp}" ]]; then
+    zflag=(-z "${full_fp}")
+  else
+    zflag=()
+  fi
 
-    curl --create-dirs -sL -o "${full_fp}" "${zflag[@]}" "${url}"
-    echo "${url} -> ${full_fp}"
+  curl --create-dirs -sL -o "${full_fp}" "${zflag[@]}" "${url}"
+  echo "${url} -> ${full_fp}"
 }
 
 function download_urls {
-    # Takes in a base directory to save into, and all the URLs to download
-    # The directory hierarchy to place the resource to download follows the URL
-    local -r base_dir="$1"
-    local -r urls="$2"
-    local -r find_css_urls="$3"  # For CSS files only
+  # Takes in a base directory to save into, and all the URLs to download
+  # The directory hierarchy to place the resource to download follows the URL
+  local -r base_dir="$1"
+  local -r urls="$2"
+  local -r find_css_urls="$3"  # For CSS files only
 
-    local full_fp
-    local rel_urls
-    local inner_url
+  local full_fp
+  local rel_urls
+  local inner_url
 
-    for url in ${urls}; do
-        download_url_impl "${base_dir}" "${url}"
+  for url in ${urls}; do
+    download_url_impl "${base_dir}" "${url}"
+    
+    # Additional step for CSS files only
+    # Need to find the inner external resources the CSS uses and save relative to its path
+    if [[ "${find_css_urls}" == "yes" ]]; then
+      full_fp="$(get_full_filepath_from_url "${base_dir}" "${url}")"
 
-        # Additional step for CSS files only
-        # Need to find the inner external resources the CSS uses and save relative to its path
-        if [[ "${find_css_urls}" == "yes" ]]; then
-            full_fp="$(get_full_filepath_from_url "${url}")"
-            rel_urls="$(rg "url\('(.+?)'\)" -o -r "\$1" --no-column --no-filename -N -U -- "${full_fp}")"
+      # rg returns 1 when it fails to find a match, which is okay here if the CSS doesn't have
+      # additional resources
+      rel_urls="$(rg "url\('(.+?)'\)" -o -r "\$1" --no-column --no-filename -N -U -- "${full_fp}" || true)"
 
-            for rel_url in ${rel_urls}; do
-                inner_url="$(resolve_url "${url}" "${rel_url}")"
-                download_url_impl "${base_dir}" "${inner_url}"
-            done
-        fi
-    done
+      for rel_url in ${rel_urls}; do
+        inner_url="$(resolve_url "${url}" "${rel_url}")"
+        download_url_impl "${base_dir}" "${inner_url}"
+      done
+    fi
+  done
+}
+
+#
+# JSON generation functions
+#
+
+function join_by { local IFS="$1"; shift; echo "$*"; }
+
+function form_url_list {
+  local -r urls="$1"
+  for url in ${urls}; do
+    bn="$(basename "${url}")"
+    echo "\"${bn}\":\"$(get_full_dirpath_from_url "" "${url}")/${bn}\""
+  done
+}
+
+function generate_url_json {
+  local -r urls="$1"
+  # jq automatically removes duplicate keys if any
+  echo "{$(join_by "," $(form_url_list "${urls}"))}" | jq -M -r .
 }
 
 #
 # Main
 #
 
+download_static=yes
+generate_conf=yes
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  -h|--help)
+    echo "$0 - Fetch folium external resources and generate config"
+    echo " "
+    echo "$0 [OPTIONS] "
+    echo " "
+    echo "OPTIONS:"
+    echo "  --no-static     Do not download external folium static resources"
+    echo "  --no-conf       Do not generate external resource configurations"
+    exit 0
+    ;;
+  --no-static)
+    download_static=no
+    shift
+    ;;
+  --no-conf)
+    generate_conf=no
+    shift
+    ;;
+  *)
+    >&2 echo "Unknown flag \"$1\" provided!"
+    exit 1
+    ;;
+  esac
+done
+
+# Null case where all actions to take are disabled
+if [[ "${download_static}" == "no" ]] && [[ "${generate_conf}" == "no" ]]; then
+  echo "DONE! No actions required for the script!"
+  exit 0
+fi
+
 # We will assume that if `folium` directory is present, we have already git cloned it
 if [[ ! -d "folium" ]]; then
-    git clone https://github.com/python-visualization/folium.git
+  git clone https://github.com/python-visualization/folium.git
 fi
 
 # Checkout to the right rev
 (cd folium && git fetch -p && git checkout "${FOLIUM_REV}")
 
 # All other JavascriptLink
-download_urls "${BASE_DIR}" "$(rg "JavascriptLink\(\s*['\"](.+?)['\"]\)" -o -r "\$1" --no-column --no-filename -N -U -- folium/ | sort -h | uniq)" no
-
+js_urls="$(rg "JavascriptLink\(\s*['\"](.+?)['\"]\)" -o -r "\$1" --no-column --no-filename -N -U -- folium/ | sort -h | uniq)"
 # _default_js for folium
-download_urls "${BASE_DIR}" "$(rg "['\"](http[s]://.+?\.js)['\"]" -o -r "\$1" --no-column --no-filename -N -U -- folium/folium/folium.py | sort -h | uniq)" no
-
+def_js_urls="$(rg "['\"](http[s]://.+?\.js)['\"]" -o -r "\$1" --no-column --no-filename -N -U -- folium/folium/folium.py | sort -h | uniq)"
 # All other CssLink
-download_urls "${BASE_DIR}" "$(rg "CssLink\(\s*['\"](.+?)['\"]\)" -o -r "\$1" --no-column --no-filename -N -U -- folium/ | sort -h | uniq)" yes
-
+css_urls="$(rg "CssLink\(\s*['\"](.+?)['\"]\)" -o -r "\$1" --no-column --no-filename -N -U -- folium/ | sort -h | uniq)"
 # _default_css for folium
-download_urls "${BASE_DIR}" "$(rg "['\"](http[s]://.+?\.css)['\"]" -o -r "\$1" --no-column --no-filename -N -U -- folium/folium/folium.py | sort -h | uniq)" yes
+def_css_urls="$(rg "['\"](http[s]://.+?\.css)['\"]" -o -r "\$1" --no-column --no-filename -N -U -- folium/folium/folium.py | sort -h | uniq)"
 
+# Download external static resources 
+if [[ "${download_static}" == "yes" ]]; then
+  echo "Downloading JS resources..."
+  download_urls "${BASE_DIR}" "${js_urls}" no
+  download_urls "${BASE_DIR}" "${def_js_urls}" no
+
+  echo "Downloading CSS resources..."
+  download_urls "${BASE_DIR}" "${css_urls}" yes
+  download_urls "${BASE_DIR}" "${def_css_urls}" yes
+fi
+
+# Generate JSON config for all JS and CSS resources
+if [[ "${generate_conf}" == "yes" ]]; then
+  echo "Writing external configuration files..."
+  mkdir -p "${EXT_DIR}"
+  all_js_urls="${js_urls} ${def_js_urls}"
+  generate_url_json "${all_js_urls}" > "${EXT_DIR}/${EXT_JS_CONF_FILENAME}"
+
+  all_css_urls="${css_urls} ${def_css_urls}"
+  generate_url_json "${all_css_urls}" > "${EXT_DIR}/${EXT_CSS_CONF_FILENAME}"
+fi
+
+echo "DONE!"
