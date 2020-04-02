@@ -132,6 +132,7 @@ function form_url_list {
 function generate_url_json {
   local -r urls="$1"
   # jq automatically removes duplicate keys if any
+  # Also word splitting is required here so we ignore shellcheck SC2046
   echo "{$(join_by "," $(form_url_list "${urls}"))}" | jq -M -r .
 }
 
@@ -188,11 +189,11 @@ if [[ "${download_static}" == "no" && "${generate_conf}" == "no" && "${delete_st
 fi
 
 if [[ "${delete_static}" == "yes" ]]; then
-  rm -rf "${BASE_DIR}/"
+  rm -rf "${BASE_DIR:?}/"
 fi
 
 if [[ "${delete_conf}" == "yes" ]]; then
-  rm -rf "${EXT_DIR}/"
+  rm -rf "${EXT_DIR:?}/"
 fi
 
 # We will assume that if `folium` directory is present, we have already git cloned it
