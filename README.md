@@ -1,5 +1,7 @@
 # Folium Resource Server
 
+![CI Status](https://img.shields.io/github/workflow/status/dsaidgovsg/folium-resource-server/CI/v0.10.1-release?label=CI&logo=github&style=for-the-badge)
+
 Simple server to host folium Javascript and CSS resources for custom-hosted
 Folium maps.
 
