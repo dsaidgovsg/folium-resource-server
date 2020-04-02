@@ -141,6 +141,8 @@ function generate_url_json {
 
 download_static=yes
 generate_conf=yes
+delete_static=no
+delete_conf=no
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -150,8 +152,10 @@ while [[ $# -gt 0 ]]; do
     echo "$0 [OPTIONS] "
     echo " "
     echo "OPTIONS:"
-    echo "  --no-static     Do not download external folium static resources"
-    echo "  --no-conf       Do not generate external resource configurations"
+    echo "  --no-static      Do not download external folium static resources"
+    echo "  --no-conf        Do not generate external resource configurations"
+    echo "  --delete-static  Delete all external folium static resources first"
+    echo "  --delete-conf    Delete all external resource configurations first"
     exit 0
     ;;
   --no-static)
@@ -162,6 +166,14 @@ while [[ $# -gt 0 ]]; do
     generate_conf=no
     shift
     ;;
+  --delete-static)
+    delete_static=yes
+    shift
+    ;;
+  --delete-conf)
+    delete_conf=yes
+    shift
+    ;;
   *)
     >&2 echo "Unknown flag \"$1\" provided!"
     exit 1
@@ -170,48 +182,58 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Null case where all actions to take are disabled
-if [[ "${download_static}" == "no" ]] && [[ "${generate_conf}" == "no" ]]; then
+if [[ "${download_static}" == "no" && "${generate_conf}" == "no" && "${delete_static}" == "no" && "${delete_conf}" == "no" ]]; then
   echo "DONE! No actions required for the script!"
   exit 0
 fi
 
+if [[ "${delete_static}" == "yes" ]]; then
+  rm -rf "${BASE_DIR}/"
+fi
+
+if [[ "${delete_conf}" == "yes" ]]; then
+  rm -rf "${EXT_DIR}/"
+fi
+
 # We will assume that if `folium` directory is present, we have already git cloned it
-if [[ ! -d "folium" ]]; then
-  git clone https://github.com/python-visualization/folium.git
-fi
+if [[ "${download_static}" == "yes" || "${generate_conf}" == "yes" ]]; then
+  if [[ ! -d "folium" ]]; then
+    git clone https://github.com/python-visualization/folium.git
+  fi
 
-# Checkout to the right rev
-(cd folium && git fetch -p && git checkout "${FOLIUM_REV}")
+  # Checkout to the right rev
+  (cd folium && git fetch -p && git checkout "${FOLIUM_REV}")
 
-# All other JavascriptLink
-js_urls="$(rg "JavascriptLink\(\s*['\"](.+?)['\"]\)" -o -r "\$1" --no-column --no-filename -N -U -- folium/ | sort -h | uniq)"
-# _default_js for folium
-def_js_urls="$(rg "['\"](http[s]://.+?\.js)['\"]" -o -r "\$1" --no-column --no-filename -N -U -- folium/folium/folium.py | sort -h | uniq)"
-# All other CssLink
-css_urls="$(rg "CssLink\(\s*['\"](.+?)['\"]\)" -o -r "\$1" --no-column --no-filename -N -U -- folium/ | sort -h | uniq)"
-# _default_css for folium
-def_css_urls="$(rg "['\"](http[s]://.+?\.css)['\"]" -o -r "\$1" --no-column --no-filename -N -U -- folium/folium/folium.py | sort -h | uniq)"
+  # All other JavascriptLink
+  js_urls="$(rg "JavascriptLink\(\s*['\"](.+?)['\"]\)" -o -r "\$1" --no-column --no-filename -N -U -- folium/ | sort -h | uniq)"
+  # _default_js for folium
+  def_js_urls="$(rg "['\"](http[s]://.+?\.js)['\"]" -o -r "\$1" --no-column --no-filename -N -U -- folium/folium/folium.py | sort -h | uniq)"
+  # All other CssLink
+  css_urls="$(rg "CssLink\(\s*['\"](.+?)['\"]\)" -o -r "\$1" --no-column --no-filename -N -U -- folium/ | sort -h | uniq)"
+  # _default_css for folium
+  def_css_urls="$(rg "['\"](http[s]://.+?\.css)['\"]" -o -r "\$1" --no-column --no-filename -N -U -- folium/folium/folium.py | sort -h | uniq)"
 
-# Download external static resources 
-if [[ "${download_static}" == "yes" ]]; then
-  echo "Downloading JS resources..."
-  download_urls "${BASE_DIR}" "${js_urls}" no
-  download_urls "${BASE_DIR}" "${def_js_urls}" no
+  # Download external static resources 
+  if [[ "${download_static}" == "yes" ]]; then
+    echo "Downloading JS resources..."
+    download_urls "${BASE_DIR}" "${js_urls}" no
+    download_urls "${BASE_DIR}" "${def_js_urls}" no
 
-  echo "Downloading CSS resources..."
-  download_urls "${BASE_DIR}" "${css_urls}" yes
-  download_urls "${BASE_DIR}" "${def_css_urls}" yes
-fi
+    echo "Downloading CSS resources..."
+    download_urls "${BASE_DIR}" "${css_urls}" yes
+    download_urls "${BASE_DIR}" "${def_css_urls}" yes
+  fi
 
-# Generate JSON config for all JS and CSS resources
-if [[ "${generate_conf}" == "yes" ]]; then
-  echo "Writing external configuration files..."
-  mkdir -p "${EXT_DIR}"
-  all_js_urls="${js_urls} ${def_js_urls}"
-  generate_url_json "${all_js_urls}" > "${EXT_DIR}/${EXT_JS_CONF_FILENAME}"
+  # Generate JSON config for all JS and CSS resources
+  if [[ "${generate_conf}" == "yes" ]]; then
+    echo "Writing external configuration files..."
+    mkdir -p "${EXT_DIR}"
+    all_js_urls="${js_urls} ${def_js_urls}"
+    generate_url_json "${all_js_urls}" > "${EXT_DIR}/${EXT_JS_CONF_FILENAME}"
 
-  all_css_urls="${css_urls} ${def_css_urls}"
-  generate_url_json "${all_css_urls}" > "${EXT_DIR}/${EXT_CSS_CONF_FILENAME}"
+    all_css_urls="${css_urls} ${def_css_urls}"
+    generate_url_json "${all_css_urls}" > "${EXT_DIR}/${EXT_CSS_CONF_FILENAME}"
+  fi
 fi
 
 echo "DONE!"
