@@ -31,12 +31,21 @@ function resolve_url {
 
   local base_dp; base_dp="$(dirname "${base_url}")"
   local mod_relative_url; mod_relative_url="${relative_url}"
+  local symbols_check; symbols_check=yes
 
-  # For simplicity, we assume the ../ only exists on the left until a non-../ is found
-  if [[ "${mod_relative_url}" == "../"* ]]; then
-    base_dp="$(dirname "${base_dp}")"
-    mod_relative_url="${mod_relative_url:3}"  # Substring to strip off the ../
-  fi
+  while [[ "${symbols_check}" == "yes" ]]; do
+    if [[ "${mod_relative_url}" == "../"* ]]; then
+      # For simplicity, we assume the ../ only exists on the left until a non-../ is found
+      base_dp="$(dirname "${base_dp}")"
+      mod_relative_url="${mod_relative_url:3}"  # Substring to strip off the ../
+    elif [[ "${mod_relative_url}" == "//"* ]]; then
+      # Change base URL entirely, we need to assume the context is https
+      base_dp="https:/"  # Drop one slash because of os.path.join
+      mod_relative_url="${mod_relative_url:2}"
+    else
+      symbols_check=no
+    fi
+  done
 
   echo "${base_dp}/${mod_relative_url}"
 }
@@ -105,7 +114,8 @@ function download_urls {
 
       # rg returns 1 when it fails to find a match, which is okay here if the CSS doesn't have
       # additional resources
-      rel_urls="$(rg "url\('(.+?)'\)" -o -r "\$1" --no-column --no-filename -N -U -- "${full_fp}" || true)"
+      # Drops cases that start with #
+      rel_urls="$(rg "url\(['\"]?(.+?)['\"]?\)" -o -r "\$1" --no-column --no-filename -N -U -- "${full_fp}" | rg -v "^#" || true)"
 
       for rel_url in ${rel_urls}; do
         inner_url="$(resolve_url "${url}" "${rel_url}")"
