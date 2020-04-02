@@ -3,6 +3,9 @@
 Simple server to host folium Javascript and CSS resources for custom-hosted
 Folium maps.
 
+Also contains a bash script to scrape the `folium` repository and download all
+the external resources required for hosting.
+
 ## Motivation
 
 Ever wished that you were able to server Folium maps within self-hosted /
@@ -20,32 +23,54 @@ Folium requires two sets of external resources:
    - <https://python-visualization.github.io/folium/modules.html> for how to
      specify the custom tileserver URL.
 
-2. `leaflet` Javascript and CSS files. These are currently not officially
-   supported for overriding, which is the main issue of not being able to custom
-   host the entire `folium` rendered HTML maps.
+2. Javascript and CSS files required by many third-party libraries of `folium`,
+   such as `leaflet`. These are currently not officially supported for
+   overriding, which is understandable because of the sheer amount of external
+   JS and CSS resources.
 
-   This repository provides the extracted JS and CSS files and is able to custom
+   This repository provides the extracted JS and CSS files (and the
+   corresponding extra resources for the CSS files), and is able to custom
    host these static files for access.
 
    To overcome the issue of overriding the URLs to these resources, this
-   repository works in tandem with <https://github.com/guangie88/folium>. You
-   will need to perform installation of the `folium` library from this source
-   instead of the official source. Be rest assured that the only file changes
-   in this custom `folium` always starts from a release tag from the official
-   source, and only opens up the possibility of changing the JS and CSS URLs.
+   repository works in tandem with
+   <https://github.com/dsaidgovsg/folium-override-server>. The generated
+   [external/folium-css.json](external/folium-css.json) and
+   [external/folium-js.json](external/folium-js.json) files are meant for the
+   above repository to use, to know how to string replace all found external
+   URLs to point to this repository hosted resources in `static` directory.
 
-   Note that the tag values found in the branch names should correspond to the
-   branch to use in the above repository.
+   The tag release system here follows this format `vX.Y.Z_folium-v0.10.1`. The
+   `vX.Y.Z` part is the semver for this repository, while the `Z_folium-v0.10.1`
+   part is to match the resources that was extracted from `folium` `v0.10.1`.
 
-   For e.g. `v0.10.1-release` in this repository will correspond to custom branch
-   `v0.10.1+urloverride` in <https://github.com/guangie88/folium>.
+   In general, the users should be more mindful of the `folium` version since
+   it needs to match with the `folium` version that was used to generate the
+   `folium` map. There is probably a high chance that a slight mismatch version
+   of `folium` and this repository would work, but it is not a 100% guarantee.
 
-## How to set-up
+## Set-Up
 
-### Folium JS and CSS resources
+The set-up is Docker centric and uses Caddy 2 to host the static files.
 
-The set-up is Docker centric (which is good right?) and currently uses Caddy 2
-to host the static files.
+### Pull and run
+
+The built image is already available. This pulls and just runs the webserver.
+
+```bash
+docker pull dsaidgovsg/folium-resource-server:v0.1.0_folium-v0.10.1
+docker run --rm -it -p 8080:8080 dsaidgovsg/folium-resource-server:v0.1.0_folium-v0.10.1
+```
+
+To test that this is working, enter the following link into your web browser:
+
+```txt
+http://localhost:8080/code.jquery.com/jquery-1.12.4.min.js
+```
+
+You should see the contents of the JS being displayed.
+
+### Manual build
 
 You will need both `docker` and `docker-compose`. Simply run the following:
 
@@ -53,64 +78,35 @@ You will need both `docker` and `docker-compose`. Simply run the following:
 docker-compose up --build
 ```
 
-to get a running static HTTP file server. To test that this is working, enter
-the following link into your web browser:
+to get a running static HTTP file server.
+
+To test that this is working, enter the following link into your web browser:
 
 ```txt
-http://localhost:8080/leaflet.awesome.rotate.css
+http://localhost:8080/code.jquery.com/jquery-1.12.4.min.js
 ```
 
-You should see the contents of the CSS being displayed.
-
-### Custom Folium library
-
-Assuming you are using `pip` with `requirements.txt` file, you can install
-`folium` from the above custom repository with the following requirement link
-in `requirements.txt`
-
-```txt
-git+git://github.com/guangie88/folium.git@v0.10.1+urloverride#egg=folium
-```
-
-and then run
-
-```bash
-pip install -r requirements.txt
-```
-
-to install the custom `folium` package.
-
-When using this custom `folium` library, the code should exactly be the same as
-before, but if you wish to use the static JS and CSS resources here, you need to
-make construct your `folium` `Map` object like this:
-
-```python
-import os
-# ...
-
-FOLIUM_SERVER_URL = "http://localhost:8080"  # Assuming this repo server is running on localhost:8080
-
-folium.Map(
-    # ...
-    override_js={
-        "leaflet": os.path.join(FOLIUM_SERVER_URL, "leaflet@1.5.1/leaflet.js"),
-        "jquery": os.path.join(FOLIUM_SERVER_URL, "jquery-1.12.4.min.js"),
-        "bootstrap": os.path.join(FOLIUM_SERVER_URL, "bootstrap@3.2.0/bootstrap.min.js"),
-        "awesome_markers": os.path.join(FOLIUM_SERVER_URL, "leaflet.awesome-markers@2.0.2/leaflet.awesome-markers.js"),
-    },
-    override_css={
-        "leaflet_css": os.path.join(FOLIUM_SERVER_URL, "leaflet@1.5.1/leaflet.css"),
-        "bootstrap_css": os.path.join(FOLIUM_SERVER_URL, "bootstrap@3.2.0/bootstrap.min.css"),
-        "bootstrap_theme_css": os.path.join(FOLIUM_SERVER_URL, "bootstrap@3.2.0/bootstrap-theme.min.css"),
-        "awesome_markers_font_css": os.path.join(FOLIUM_SERVER_URL, "font-awesome@4.6.3/font-awesome.min.css"),
-        "awesome_markers_css": os.path.join(FOLIUM_SERVER_URL, "leaflet.awesome-markers@2.0.2/leaflet.awesome-markers.css"),
-        "awesome_rotate_css": os.path.join(FOLIUM_SERVER_URL, "leaflet.awesome.rotate.css"),
-    },
-)
-```
+You should see the contents of the JS being displayed.
 
 ## Alternative set-up
 
 For the Folium resource static file server, you could also just take all the
 files in [`static`](static/) and host them in any static file webserver that you
 prefer.
+
+## How to refresh the resources and external configuration
+
+Simply run `static-fetch.sh`. Note that this requires a higher version of
+`bash`, and has been tested to work on Ubuntu 18.04 LTS's default `bash`.
+
+Both the `static` directory which contains the downloaded JS and CSS resources to host, as well as
+the `external` directory which contains the configuration for
+<https://github.com/dsaidgovsg/folium-override-server> to use will be updated.
+
+There are flags that can be added to tweak the behaviour of the script, run
+
+```bash
+./static-fetch.sh -h
+```
+
+to find out more.
