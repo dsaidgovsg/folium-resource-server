@@ -43,7 +43,7 @@ Folium requires two sets of external resources:
    URLs to point to this repository hosted resources in `static` directory.
 
    The tag release system here follows this format `vX.Y.Z_folium-v0.10.1`. The
-   `vX.Y.Z` part is the semver for this repository, while the `Z_folium-v0.10.1`
+   `vX.Y.Z` part is the semver for this repository, while the `folium-v0.10.1`
    part is to match the resources that was extracted from `folium` `v0.10.1`.
 
    In general, the users should be more mindful of the `folium` version since
