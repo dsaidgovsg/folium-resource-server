@@ -4,14 +4,13 @@ on:
   push:
     branches:
     - master
-    - v*-release
   pull_request:
     branches:
     - master
-    - v*-release
   release:
     types:
     - created
+    - published
 
 jobs:
   build:
