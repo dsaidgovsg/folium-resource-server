@@ -98,7 +98,7 @@ function download_urls {
   # The directory hierarchy to place the resource to download follows the URL
   local -r base_dir="$1"
   local -r urls="$2"
-  local -r is_css="$3"  # For CSS files only
+  local -r download_mode="$3"  # "js" | "css"
 
   local full_fp
   local rel_urls
@@ -110,7 +110,7 @@ function download_urls {
     
     # Additional step for CSS files only
     # Need to find the inner external resources the CSS uses and save relative to its path
-    if [[ "${is_css}" == "yes" ]]; then
+    if [[ "${download_mode}" == "css" ]]; then
       # rg returns 1 when it fails to find a match, which is okay here if the CSS doesn't have
       # additional resources
       # Drops cases that start with #
@@ -120,7 +120,7 @@ function download_urls {
         inner_url="$(resolve_url "${url}" "${rel_url}")"
         download_url_impl "${base_dir}" "${inner_url}"
       done
-    else
+    else  # js
       # leaflet js annoyingly contains some JS references that needs to be downloaded too
       rel_urls="$(rg "Url:['\"](.+?\.(?:png|svg))['\"]" -o -r "\$1" --no-column --no-filename -N -U -- "${full_fp}" || true)"
 
@@ -236,12 +236,12 @@ if [[ "${download_static}" == "yes" || "${generate_conf}" == "yes" ]]; then
   # Download external static resources 
   if [[ "${download_static}" == "yes" ]]; then
     echo "Downloading JS resources..."
-    download_urls "${BASE_DIR}" "${js_urls}" no
-    download_urls "${BASE_DIR}" "${def_js_urls}" no
+    download_urls "${BASE_DIR}" "${js_urls}" js
+    download_urls "${BASE_DIR}" "${def_js_urls}" js
 
     echo "Downloading CSS resources..."
-    download_urls "${BASE_DIR}" "${css_urls}" yes
-    download_urls "${BASE_DIR}" "${def_css_urls}" yes
+    download_urls "${BASE_DIR}" "${css_urls}" css
+    download_urls "${BASE_DIR}" "${def_css_urls}" css
   fi
 
   # Generate JSON config for all JS and CSS resources
