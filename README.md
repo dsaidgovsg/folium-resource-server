@@ -60,8 +60,8 @@ The set-up is Docker centric and uses NGINX to host the static files.
 The built image is already available. This pulls and just runs the webserver.
 
 ```bash
-docker pull dsaidgovsg/folium-resource-server:v0.1.1_folium-v0.10.1
-docker run --rm -it -p 8080:8080 dsaidgovsg/folium-resource-server:v0.1.1_folium-v0.10.1
+docker pull dsaidgovsg/folium-resource-server:v0.1.2_folium-v0.10.1
+docker run --rm -it -p 8080:8080 dsaidgovsg/folium-resource-server:v0.1.2_folium-v0.10.1
 ```
 
 To test that this is working, enter the following link into your web browser:
