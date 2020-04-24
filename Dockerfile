@@ -1,7 +1,5 @@
-FROM caddy/caddy:2.0.0-beta.20-alpine
+FROM openresty/openresty:1.15.8.3-alpine
 
-WORKDIR /app
-COPY ./static /app/static
-
-# --browse is added for health check purposes
-CMD ["caddy", "file-server", "--browse", "--listen", ":8080", "--root", "/app/static"]
+# Overwrite the default openresty nginx.conf
+COPY nginx.conf /usr/local/openresty/nginx/conf/nginx.conf
+COPY ./static /usr/share/nginx/html/static

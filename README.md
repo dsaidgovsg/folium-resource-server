@@ -53,7 +53,7 @@ Folium requires two sets of external resources:
 
 ## Set-Up
 
-The set-up is Docker centric and uses Caddy 2 to host the static files.
+The set-up is Docker centric and uses NGINX to host the static files.
 
 ### Pull and run
 
